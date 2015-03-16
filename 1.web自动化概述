@@ -1,0 +1,546 @@
+LWP（Library for World Wide Web in Perl的缩写，意为Perl网络库）是一组Perl的模块和面向对象的类，用以从网站获取数据及从HTML文档中抽取信息。本章将提供LWP组合的主要 背景：描述LWP的特性和历史、运行在哪些平台以及如何下载安装。本章以展示几个LWP程序常见任务的快速演练来结束，诸如获取网页、用规则表达式抽取信 息还有提交表单等。
+
+1.1以网站作为数据资源
+
+大多数站点是为人而建的，用户界面的牛人们为创建在所有浏览器上都很易用且正常显示的HTML代码而索价不菲。用户体验的牛人们则晃动着手指告诉网站设计人员去研究他们的用户，这样他们才会了解人类的弱点和将要浏览网站的这些类人猿后裔们的渴望。
+
+但从根本上来说，一个网站则是数据和服务的根源所在。股票经纪人的站点会有股票价格和你的股票的价值（数据）及你可以用来买卖股票的表单（服务）。Amazon网站有图书的ISBN、书名、作者、评论、价格和等级（数据）及你可以订购这些书的表单（服务）。
+
+这是假定人们通过浏览转换后的HTML来访问数据和服务的。但是很多程序员会盯着网络上的那些数据资源和服务想：“我想在一个程序里用这些！”。比如当你的股票跌至某个点时它们可以呼叫你，或是根据价格与读者评论的平均数的比率来推算一本“最好的”有关Perl的书。
+
+LWP让你可以做诸如此类的网络自动化处理。使用它你可以获取网页文件、提交表单、验证身份以及从HTML中抽取信息。一旦你使用它来抓取新闻头条或是检查链接，你就不用再重复浏览该网站了。
+
+就如Perl所有的一切一样，自动化访问网站也并非只有一种方法。在本书中我们将向你展示从访问网站的基本方法（通过LWP::Simple模块），到表单，到cookies、身份验证及其它类型的复杂请求的骇人细节的所有方法。
+ 
+
+1.1.1 屏幕抓取（screen scraping）
+
+一 旦你掌握了如何向一个Web服务器请求某一页面的基础，掩埋在HTML响应之中的你还需要从中找到你所需的信息才可以。大多时候你只需规则表达式就可以搞 定这些。第六章描述了使用规则表达式从HTML中抽取信息的艺术，尽管你在第二章就可以对它的初步先睹为快，我们向AltaVista站点查询一个词，然 后用一条规则表达式匹配返回的“我们发现[number]条结果。”中的number。
+
+而更加老道的LWP行家则把 HTML文档看做是标记流（第七章，还有在第八章里一个做了扩展的例子），或是解析树（第九章）。例如，诸如如何获取失去了某些属性的<img …>标签、如何得到BBC新闻版主页上所有头条的绝对链接地址、如何从一个站点抽取内容然后插入到另外一个不同的模板等等的工作，你可以使用一个标 记视图或者树状视图来解决。
+
+在以前使用80x24分辨率终端时，屏幕抓取（screen scraping）这个词用来指使用编程的方式从交互性的应用程序的显示内容中获取信息的技术。该术语已经沿用为从主要作为交互应用而设计的任何系统的输 出中自动获取数据的行为。之所以用这个术语描述从HTML中获取数据，是因为HTML原本是用来显示在浏览器中浏览的，而非为你的程序抽取而用的。
+ 
+
+1.1.2 脆弱性
+
+ 
+一 些幸运的情况是，你的LWP相 关的任务只是下载一个无需你的程序为它做任何解析的文件。但是很多任务涉及到必须要使用之前提到的屏幕截取技术从返回的文档中提取一条数据。一个无法规避 的问题就是大多网站内容的格式随时都会改变。比如在第八章里我就讨论了从网站获取“法国航空”广播秀的节目列表的数据提取任务。我对此特例所表述的规律对 于所有的抽取任务都是成立的：没有永久的数据形式，因此所有的数据解析程序都是“脆弱的”。
+
+例如，假如你想匹配段落标题 的文本，你按着它们在<h2>…</h2>标签内来写程序，但也许第二天该站点就重新设计了模板，标题就变到<h3 class='hdln'>...</h3>标签里，这样一来你的程序就找不到任何它想找的标题了。实际上每个给定的网站的模板也不会 每天都换（大多数站点甚至一年都不会换一次），但是当你阅读本书以及看数据提取的例子时，一定切记每个解决方案都不是唯一的方案，而只是一种方案，一个临时而脆弱的方案。
+
+作 为带有几分脆弱性的课程，在本书中我会向你展示来自一些不同的网站的数据（Amazon.com，BBC 新闻网，以及其它一些），还会向你展示如何写程序从这些网站提取数据。然而代码是易碎的。一些网站每隔几年会改版；Amazon每隔几个星期就会做些更 改。因此我尽可能努力保证所提供的代码对在我写作本书时的这些站点还是确切的，因此我希望在这些站点甚至已经无法识别的时候你依然会把本书的这些程序当作 有价值的学习工具。
+ 
+
+1.1.3网络服务（Web Services）
+
+程序员们已经开始认识到跨站点间事务自动化的价值。网络服务作为跨站点提供数据和服务的流行语，时下已然是一项红红火火的产业。网络服务之于网站的区别是前者不仅为人们最终的阅读乐趣发布HTML，它们还为程序应用而发布XML。
+
+这 就消除了从HTML中截取信息的必要，完美地解决了迎合公众浏览的多变的口味而不断改变的网站而造成的脆弱性问题。一些网络服务的标准（SOAP和 XML-RPC）甚至把远端网络服务做成一组从你的程序里就可以调用的函数，如果你使用SOAP或XML-RPC的工具集，你甚至都不用做XML解析！
+
+然而，网络上总会有一些无法以网络服务访问的信息。对于这些信息屏幕抓取是唯一的选择。
+ 
+
+1.2 LWP的历史
+
+以下LWP的历史是由Gisle Aas撰写的，他是LWP的创建者和当前维护者之一。
+
+Libwww- perl工程恰好开端于1994年在日内瓦召开的第一届万维网大会（WWW conference）。这次会议上，Martijn Koster 遇到了Roy Fielding，Roy Fielding当时正展示他在MOMspider上所做的工作。MOMspider是一个Perl程序，用来爬行网络寻找断链然后建立一个文档和链接的 索引。Martijn建议把改程序中可重用的组建转换成一个库。结果就有了Roy所维护的Perl4下的libwww-perl。
+
+同 年的稍后，Larry Wall发布了Perl5的第一个“稳定版”。很显然，新Perl版本所提供的模块系统和面向对象特性使得Roy的库表现更佳。Martijn和我一度又 对libwww-perl分别做了不同的修改。我们同心协力，融合了各自的设计，发布了好几个alpha版本。不幸的是，一切因Martijn为工作之外 的时间所做工作的知识产权问题和老板产生了分歧而结束。为了保证代码依然属Perl社区所有，他让我来接管维护。
+
+LWP:: 模块的命名空间是由Martijn在一个早期的alpha版本中引入的。名称的选择在libwww邮件列表上被热烈地讨论着。很快就被指出这个名字会和某 个线程实现的叫法混淆，但是也没有更好的替代名称出现。在这个问题的最后一条消息中Martijn做出总结：“好的，我们都同意LWP臭名昭著:-) 。”名字保留，它创立了它自己。
+
+如果今天你在Google中搜索LWP，你要想找一个关于线程的链接你不得不跳到第30页上。
+
+1996 年的五月，我们发布了libwww在Perl5下第一个非测试版本。它被称作release 5.0是因为它是为Perl5使用的。这给Roy维护的称作libwww-perl-0.40的为Perl4使用的libwww留出余地。Marijn继 续贡献着但是不幸被“Java列车卷走了”。
+
+在1997-98年间，我试着以LWPng的名称按着事件循环的概念重新设计 LWP。这就允许了很多好东西：在同一连接上可以并行处理多请求；请求可以放入管道来提高往返时间；真正支持HTTP/1.1。然而完成它的tuits一 直没有到来，所以该分支到目前为止必须被当作死掉了。但我依然希望有勇敢的灵魂出现决定让它起死回生。
+
+仍旧是在1998这一年HTML::模块从LWP的核心套件中分离出来，也就是在Sean M. Burke出现并接管了HTML-Tree的套件的一年之后。HTML::可以完全处理世界上你所能找到的任何HTML文档。
+
+今天的LWP处在一个发行周期更加缓慢的严格维护模式之下。代码基础似乎更加牢固，也能胜任大多人们所期待的工作。
+
+1.3  安装LWP
+
+LWP和其它相关模块都可以在CPAN（the Comprehensive Perl Archive Network）的各种套件中免费得到。在附录A的开头主要的套件都有列出，尽管哪个模块属于哪个套件的细节会不定期的变化。
+
+如果你是在Windows上使用ActivePerl或是在Mac OS 9上使用MacPerl，你就已经拥有了LWP。如果你是在Unix上并且没有安装过LWP，则你需要按照下一小节给出的指令从CPAN来安装。
+检查你是否已经安装了LWP：
+
+% perl -MLWP -le "print(LWP->VERSION)"
+
+（“-le”中的第二个字符是小写字母L，不是数字1。）
+
+如果你看到：
+Can't locate LWP in @INC (@INC contains: ...lots of paths...).
+BEGIN failed--compilation aborted.
+
+或者你看到版本号低于5.64，你的系统就需要安装LWP。 安装模块有两种途径：使用CPAN shell或是旧式的手工方式。
+
+1.3.1从CPAN Shell安装LWP
+
+CPAN Shell是一种命令行环境，用来从CPAN自动下载、编译及安装模块。
+
+1.3.1.1配置
+
+如果你从未使用过CPAN Shell，需要对它做出配置才可以使用。在创建配置文件之前它会提示你输入一些信息。
+在系统shell命令行中输入以下命令来调用CPAN Shell：
+
+% perl -MCPAN –eshell
+ 
+如果之前你从未使用过它，会看到如下信息：
+
+We have to reconfigure CPAN.pm due to following uninitialized parameters:
+
+（因为下面的参数没有初始化我们必须重新配置CPAN.pm：）
+
+接下来是几个问题。对于每个问题来说默认的答案是典型正确的。但是如果你认为那个默认设置是错的或者不是最优的你也可以给出别的回答。一旦回答完所有的问题，就会创建一个配置文件，这样你就可以用CPAN Shell来工作了。
+
+1.3.1.2 获取帮助
+
+如果你想随时获取帮助，你可以通过键入perldoc CPAN命令，或者启动CPAN Shell（在系统Shell提示符下输入perl -MCPAN –eshell）然后在cpan>提示符下再输入h。
+cpan> h
+
+Display Information
+
+ command  argument          description
+
+ a,b,d,m  WORD or /REGEXP/  about authors, bundles,
+
+distributions, modules
+
+ i        WORD or /REGEXP/  about anything of above
+
+ r        NONE              reinstall recommendations
+
+ ls       AUTHOR            about files in the author's
+
+directory
+
+Download, Test, Make, Install...
+
+ get                        download
+
+ make                       make (implies get)
+
+ test      MODULES,         make test (implies make)
+
+ install   DISTS, BUNDLES   make install (implies test)
+
+ clean                      make clean
+
+ look                       open subshell in these dists'
+
+directories
+
+ readme                     display these dists' README files
+
+Other
+
+ h,?           display this menu       ! perl-code   eval a
+
+perl command
+
+ o conf [opt]  set and query options   q             quit the
+
+cpan shell
+
+ reload cpan   load CPAN.pm again      reload index  load
+
+newer indices
+
+ autobundle    Snapshot                force cmd
+
+unconditionally do cmd
+
+1.3.1.3 安装LWP
+
+所有你需要做的就是输入：
+
+cpan> install Bundle::LWP
+
+CPAN Shell就会显示信息解释它正在做什么。你或许需要回答一些有关各种模块的配置的问题（比如libnet会问mail主机等，是为了测试的目的）。
+在 进行一番动作之后，在你的系统就有了LWP的一个最新副本，而完全不用一次一个安装版地手动安装。在写本书时，install Bundle::LWP命令不仅安装libwww-perl套件，还会安装URI及HTML-Parser。但它不会安装第九章和第十章中我们会用到的 HTML-Tree套件，要安装的话输入：
+
+cpan> install HTML::Tree
+
+这些命令也不会安装HTML-Format套件，它同样本是LWP套件的一部分。在本书中我不会讨论HTML-Format，但是如果你想安装它来做一个LWP的完整安装，就输入这个命令：
+
+cpan> install HTML::Format
+
+记住，也许LWP差不多是CPAN最流行的套件，但并不是那里的全部！搜寻一下CPAN（个人青睐http://search.cpan.org这个接口，但你也可以试下http://kobesearch.cpan.org )里和网络有关的部分，那里有很多模块。从WWW::Automate 到SOAP::Lite ，这可以简化你的和网络有关的工作。
+
+1.3.2手动安装LWP
+
+perlmodinstall 文档归纳总结了Perl模块的正常安装过程。你可以通过在shell提示符下运行perldoc perlmodinstall命令查看，也可以到
+http://theoryx5.uwinnipeg.ca/CPAN/perl/pod/perlmodinstall.html在线阅读。
+
+CPAN是一个巨大的Perl软件和文档的网络收藏站点。更多有关ＣＰＡＮ及模块的信息可以
+访问http://www.cpan.org/misc/cpan-faq.html查看CPAN ＦＡＱ。
+
+1.3.2.1 下载套件
+
+首先下载模块套件。LWP需要好几个其它的模块才可以成功运作。你需要安装表1-1中给出的套件，按照所列的顺序逐个安装。
+
+表1-1 ：本书中用到的模块
+
+套  件              CPAN中的目录
+MIME-Base64         authors/id/G/GA/GAAS
+libnet              authors/id/G/GB/GBAAR
+HTML-Tagset         authors/id/S/SBURKE
+HTML-Parser         authors/id/G/GA/GAAS
+URI                 authors/id/G/GA/GAAS/URI
+Compress-Zlib       authors/id/P/PM/PMQS/Compress-Zlib
+Digest-MD5          authors/id/G/GA/GAAS/Digest-MD5
+libwww-perl         authors/id/G/GA/GAAS/libwww-perl
+HTML-Tree           authors/id/S/SB/SBURKE/HTML-Tree
+
+从组成CPAN的FTP或网站中选一个来下载这些模块。这些站点在http://www.cpan.org/SITES.html 及 http://mirror.cpan.org 中有列出。有时同一个模块在CPAN的authors目录下有不同的版本存在。确认检查一下版本号下载最新的。
+比如以安装MIME-Base64为例，你可以首先获取
+http://www.cpan.org/authors/id/G/GA/GAAS/ 看一下有几个版本，然后再获取
+http://www.cpan.org/authors/id/G/GA/GAAS/MIME-Base64-2.12.tar.gz 进行安装。
+
+1.3.2.2 解包及配置
+
+套件是以gzip压缩及tar打包的源码文件。提取套件会创建一个文件夹，在文件夹里有一个Makefile.PL的Perl程序，它会为你建立一个Makefile文档。
+
+% tar xzf MIME-Base64-2.12.tar.gz
+
+% cd MIME-Base64-2.12
+
+% perl Makefile.PL
+
+Checking if your kit is complete...
+
+Looks good
+
+Writing Makefile for MIME::Base64
+
+1.3.2.3 编译、测试及安装
+
+使用make命令编译代码:
+
+% make
+
+cp Base64.pm blib/lib/MIME/Base64.pm
+
+cp QuotedPrint.pm blib/lib/MIME/QuotedPrint.pm
+
+/usr/bin/perl -I/opt/perl5/5.6.1/i386-freebsd -
+
+I/opt/perl5/5.6.1
+
+/opt/perl5/5.6.1/ExtUtils/xsubpp  -typemap
+
+/opt/perl5/5.6.1/ExtUtils/typemap Base64.xs > Base64.xsc && mv
+
+  Base64.xsc Base64.c
+
+cc -c  -fno-strict-aliasing -I/usr/local/include -O    -
+
+DVERSION=\"2.12\"
+
+  -DXS_VERSION=\"2.12\" -DPIC -fpic -I/opt/perl5/5.6.1/i386-
+
+freebsd/CORE
+
+Base64.c
+
+Running Mkbootstrap for MIME::Base64 (  )
+
+chmod 644 Base64.bs
+
+rm -f blib/arch/auto/MIME/Base64/Base64.so
+
+LD_RUN_PATH="" cc -o blib/arch/auto/MIME/Base64/Base64.so  -
+
+shared
+
+  -L/opt Base64.o
+
+chmod 755 blib/arch/auto/MIME/Base64/Base64.so
+
+cp Base64.bs blib/arch/auto/MIME/Base64/Base64.bs
+
+chmod 644 blib/arch/auto/MIME/Base64/Base64.bs
+
+Manifying blib/man3/MIME::Base64.3
+
+Manifying blib/man3/MIME::QuotedPrint.3
+
+
+然后使用make test命令确认你系统上所有一切都工作正常：
+
+% make test
+
+PERL_DL_NONLAZY=1 /usr/bin/perl -Iblib/arch -Iblib/lib
+
+-I/opt/perl5/5.6.1/i386-freebsd -I/opt/perl5/5.6.1 -e 'use
+
+Test::Harness
+
+  qw(&runtests $verbose); $verbose=0; runtests @ARGV;' t/*.t
+
+t/base64..........ok
+
+t/quoted-print....ok
+
+t/unicode.........skipped test on this platform
+
+All tests successful, 1 test skipped.
+
+Files=3, Tests=306,  1 wallclock secs ( 0.52 cusr +  0.06 csys
+
+=  0.58 CPU)
+
+
+如果通过了测试，使用make install安装（以超级用户的身份）：
+
+ 
+
+# make install
+
+Installing /opt/perl5/site_perl/5.6.1/i386-
+
+freebsd/auto/MIME/Base64/Base64.so
+
+Installing /opt/perl5/site_perl/5.6.1/i386-
+
+freebsd/auto/MIME/Base64/Base64.bs
+
+Files found in blib/arch: installing files in blib/lib into
+
+architecture
+
+  dependent library tree
+
+Installing /opt/perl5/site_perl/5.6.1/i386-
+
+freebsd/MIME/Base64.pm
+
+Installing /opt/perl5/site_perl/5.6.1/i386-
+
+freebsd/MIME/QuotedPrint.pm
+
+Installing /usr/local/man/man3/MIME::Base64.3
+
+Installing /usr/local/man/man3/MIME::QuotedPrint.3
+
+Writing /opt/perl5/site_perl/5.6.1/i386-
+
+freebsd/auto/MIME/Base64/.packlist
+
+Appending installation info to /opt/perl5/5.6.1/i386-
+
+freebsd/perllocal.pod
+
+ 
+
+1.4忠告的话
+
+理 论上来说，一个浏览器获取数据把内容显示给你，和使用基于LWP的程序获取数据然后用它做些别的事情，这两者从网络的底层机制上看没有什么区别。然而实际 上几乎所有放到网络上的数据都存在着这样一个假定（有时是隐晦的，有时是明确的）：就是它们应该是用来在浏览器中直接观看的。而你写一个LWP的程序下载 了这些数据时，你就在对这个假定构成不利。而技巧就是以一个尽可能考虑周全的方式来做这些。
+
+ 
+
+1.4.1  网络和服务器负载
+
+当 你访问一台web服务器时，你就是在使用有限的资源。你在使用自己的带宽也在使用web服 务器的带宽。此外，处理你的请求也会给远端服务器增加负担，特别是你请求的页面必须要动态地生成时，而当动态生成且涉及到数据库读取的时候则尤甚。如果你 正写一个从一个给定的服务器上请求几个页面的程序，但是你并不是立即就需要这些页面，则你应该在你的程序中写上延时（比如sleep 60; 来休眠一分钟），这样你施加给网络及web服务器的负担从一段长点的时间来看就会不引人注意地被分散掉。
+
+ 
+
+如果可能，你甚至 可以考虑在夜半时分（对相关时区做模运算）运行你的程序，这时的网络使用率不高，web服务器也大多不会忙于处理大量的请求。只有你认为你的程序没有不可 预测的风险时你才可以这么做。在第十二章我们讨论了带有确定的会发生的风险的程序，在你添加了适当的保护措施以及仔细检查以确保它们会如你所愿的那样运行 之前，不要无人值守地运行这些程序。
+
+ 
+
+1.4.2 版权
+
+鉴 于国内和国际版权法并不是一两页纸就能写满那么简单（甚至不止一两个图书馆），简短来说就是你不能因为你可以从网络上获取数据就意味着你可以用它们为所欲 为。就这些数据和版权法的关系来说，你使用它们在网络上所做的任何事情都构成一个连续体。一种情况是直接的使用，你坐在浏览器前像站长们所明确预期的那样 下载数据浏览网页。而另一种情况是非法使用，你写了一个程序用来复制保存那些并非为免费公众消费为目的的带有版权的数据，而这同时还对远程服务器造成了冲 击。然后你把这些数据保存到你对外开放的web服务器上，你还鼓励人们去浏览，这样你就可以通过放在上面的广告条来赚钱。在这两种极端之间，存在很多认为 是“正当采用”这样一个圆滑的概念的灰色地带。对于使用此类数据且能尽量处于版权法的正确之列的最保险的指引就是：我是否有可能会夺走原站点本来可能会赚 到的钱呢？
+
+ 
+
+例如，设想你建立起一个程序，每个小时从雅虎天气站点复制你所在州的最知名的50个 小镇的天气数据。然后你把这些复制到你对外开放的网站上且鼓励所有人访问它。尽管“没有人拥有天气”，甚至还有些特殊的天气数据本来就在一些开放的主机上 （这些数据的归属要看它的来源），但是雅虎天气投入时间和精力把这些数据做了收集整理，然后以某种方式呈现出来。因此，数据收集是有版权的。
+
+
+此 外，你通过公开贴出这些数据几乎肯定地会带走雅虎天气的一些浏览者，这意味着会减少他们的广告收入。即使雅虎天气站点还没有投放广告，很难明显看到他们从 浏览者赚到什么钱，但是你把这些数据放在线上其它站点就意味着，假如雅虎天气从明天开始投放广告就不会在这上面赚到更多的钱，因为那些已习惯到你的网站查 看天气的人们就不会去他们网站了。
+
+
+1.4.3  使用许可
+
+除 了版权法所提供的保护之外，许多网站还有“使用条例”或“使用许可”等策略，这里站长们大体说“作为一个用户，你可以做这些或这些，不要做那些或那些，假 如你不遵守这些条款，我们则不希望你使用该站点。”。比如，一个搜索引擎站点的使用条例也许是规定你不要向他们的系统做“自动化的查询”，更不要在其它的 站点显示搜索结果数据。
+
+
+在你打算从一个站点拖回数据之前，你应该尽量找一下他们的服务条款文档，花点时间读一下，对它所说的做个合理的解析。如果还有疑问，去问下网站的管理人员你心目中的想法会不会惹恼他们。
+
+1.5开动LWP
+
+对于做网站自动化处理时为什么需要注意，说的够多的了。让我们看一下本书中你要学到的几类事情。第二章介绍网站自动处理和LWP，会给出直接从网上取回网页文件的函数。例1-1演示如何取回O’Reilly网站的首页，并计算出Perl出现的次数。
+
+
+例1-1.      计算O'Reilly站点catalog中Perl的次数
+
+#!/usr/bin/perl -w
+use strict;
+use LWP::Simple;
+
+my $catalog = get("http://www.oreilly.com/catalog");
+my $count = 0;
+$count++ while $catalog =~ m{Perl}gi;
+print "$count\n";
+
+LWP::Simple模块的get( ) 函数返回给定链接的文档，如果出现错误则返回undef。用一条规则表达式使用循环计算出现的次数。
+
+1.5.1  面向对象接口
+
+第三章则超越LWP::Simple来展现LWP更加强大的面向对象接口。它所拥有的所有功能里最有用的就是在请求中设置标头（headers）以及检查响应中的标头。例1-2 会打印出所有主机返回的标识字符串。
+
+例1-2.  识别一台主机 
+
+#!/usr/bin/perl -w
+use strict;
+use LWP;
+
+my $browser = LWP::UserAgent->new(  );
+my $response = $browser->get("http://www.oreilly.com/");
+print $response->header("Server"), "\n";
+ 
+$browser 和 $response两个变量是对对象的引用。LWP::UserAgent的对象 $browser 向一台主机发出请求，创建HTTP::Response 对象$response来代表主机的应答。例1-2中，我们在响应中调用header( ) 方法来检查一个HTTP标头的一个值。
+
+
+1.5.2    表单
+
+第五章演示使用LWP如何分析和提交表单，包括GET和POST两种提交方式。例1-3 查询加州汽车牌照数据库查看个人牌照是否有效。
+
+例1-3. 查询加州汽车牌照数据库 
+
+#!/usr/bin/perl -w
+# pl8.pl -  query California license plate database
+
+use strict;
+use LWP::UserAgent;
+
+my $plate = $ARGV[0] || die "Plate to search for?\n";
+$plate = uc $plate;
+$plate =~ tr/O/0/;  # we use zero for letter-oh
+die "$plate is invalid.\n"
+ unless $plate =~ m/^[A-Z0-9]{2,7}$/
+    and $plate !~ m/^\d+$/;  # no all-digit plates
+my $browser = LWP::UserAgent->new;
+my $response = $browser->post(
+  'http://plates.ca.gov/search/search.php3',
+  [
+    'plate'  => $plate,
+    'search' => 'Check Plate Availability'
+  ],
+);
+
+die "Error: ", $response->status_line
+ unless $response->is_success;
+
+if($response->content =~ m/is unavailable/) {
+  print "$plate is already taken.\n";
+} elsif($response->content =~ m/and available/) {
+  print "$plate is AVAILABLE!\n";
+} else {
+  print "$plate... Can't make sense of response?!\n";
+}
+exit;
+ 
+
+下面是你使用它的大致情况：
+
+
+% pl8.pl knee
+KNEE is already taken.
+
+% pl8.pl ankle
+ANKLE is AVAILABLE!
+
+我们在一个LWP::UserAgent对象上使用post( ) 方法以POST的方式把表单参数传递给一个页面。
+
+1.5.3  解析HTML
+
+在 第六章会更详细的讨论例1-1和例1-3中使用的规则表达式技术。第七章演示一个另外的方法，HTML::TokeParser把一串HTML代码转换成 数据块流（诸如"start-tag," "text," "close-tag,"等）。第八章则一步一步地详细演练如何使用HTML::TokeParser解决问题。例1-4使用 HTML::TokeParser提取O’Reilly首页所有img标签中src的部分。
+
+例1-4. 提取图片地址 
+
+#!/usr/bin/perl -w
+
+use strict;
+use LWP::Simple;
+use HTML::TokeParser;
+
+my $html   = get("http://www.oreilly.com/");
+my $stream = HTML::TokeParser->new(\$html);
+my %image  = (  );
+
+while (my $token = $stream->get_token) {
+    if ($token->[0] eq 'S' && $token->[1] eq 'img
+        # store src value in %image
+        $image{ $token->[2]{'src'} }++;
+    }
+}
+
+foreach my $pic (sort keys %image) {
+    print "$pic\n";
+}
+
+HTML::TokeParser 对象上的get_token( )方法返回一个数组的引用，表示一个标记。如果数组的第一个元素是S，它就是表示一个标签开始的标记。数组的第二个元素是标签的类型，数组的第三个元素是 一个散列，它把相应标签的属性映射到它的值。散列%image中保存着我们发现的图片。
+
+ 
+第九章和第十章演示如何使用树状数据结构表示HTML。HTML::TreeBuilder模块创建这样的树并提供搜索和操控它们的操作方式。例1-5 使用树提取图片地址。
+
+ 
+例 1-5. 使用数提取图片地址
+
+#!/usr/bin/perl -w
+
+use strict;
+use LWP::Simple;
+use HTML::TreeBuilder;
+
+my $html = get("http://www.oreilly.com/");
+my $root = HTML::TreeBuilder->new_from_content($html);
+my %images;
+foreach my $node ($root->find_by_tag_name('img')) {
+    $images{ $node->attr('src') }++;
+}
+
+foreach my $pic (sort keys %images) {
+    print "$pic\n";
+}
+
+我们使用O’Reilly首页HTML创建一个新的树。该树具有帮助我们搜索的方法，如find_by_tag_name( )，它返回一个与那些标签相对应节点的列表。我们藉此来找到img标签，然后使用attr( )方法来得到src的属性。
+ 
+
+1.5.4  身份验证
+
+第十一章探讨有关高级请求功能，如cookies（在读取不同页面时识别一个用户）还有身份验证。例1-6演示使用LWP来请求一个受保护的页面是多么的容易。
+
+例1-6. 身份验证
+
+#!/usr/bin/perl -w
+
+use strict;
+use LWP;
+
+my $browser = LWP::UserAgent->new(  );
+$browser->credentials("www.example.com:80", "music", "fred" => "l33t1");
+my $response = $browser->get("http://www.example.com/mp3s");
+# ...
+
+LWP::UserAgent 的credentials( )方法添加了身份验证信息（主机、领域名（realm）及用户名/密码对是参数）。区域是为了识别当同一主机有很多受保护的区域时是哪一部分需要用户名密 码。当我们使用LWP::UserAgent对象请求一个文档，在需要时验证信息就可以用到了。
+
+ 
+
+1.5.5 更新
+
+如果你运行本书的程序遇到了什么问题, 你首先要做的就是确保你安装了最新版本的LWP， 以下是我最喜欢使用的方式来查看lwp版本:
+perl -e "use LWP 1000000000"
+LWP version 1000000000 required--this is only version 5.68 at -e line 1. BEGIN failed--compilation aborted at -e line 1.
+
+如果你在输出中看到的版本号小于5.68， 那么就需要更新了。这本书只针对新版本的LWP, 越新越好, 因为我们在不断的提高它的性能和接口。如果你使用老的版本， 你将会错过Gisle， 我， 还有很多其他人这些年所做的改进。
+
+举个例子:
+
+在老的LWP版本中, 加载模块HTTP::Cookies::Netscape使用的是use HTTP::Cookies 而并不是你所期望的use HTTP::Cookies::Netscape。此外，老的版本不能识别较新Mozilla版本的cookies文件. 一个更加令人信服的例子是在老版本的LWP中, LWP::UserAgent没有$browser->get或者$browser->post方法,而本书中使用得很频繁，因为我们替换了use HTTP::Request::Common; $browser->request(GET(...),...);这种非常不友好的语法.
